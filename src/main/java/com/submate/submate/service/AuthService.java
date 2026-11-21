@@ -4,6 +4,7 @@ package com.submate.submate.service;
 import com.submate.submate.dto.SignupRequest;
 import com.submate.submate.dto.LoginRequest;
 import com.submate.submate.dto.LoginResponse;
+import com.submate.submate.dto.PasswordResetRequest;
 import com.submate.submate.service.JwtService;
 import com.submate.submate.entity.EmailVerification;
 import com.submate.submate.repository.EmailVerificationRepository;
@@ -136,6 +137,58 @@ public class AuthService {
                 604800,
                 userInfo
         );
+    }
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+
+        String email = request.getEmail().trim().toLowerCase();
+
+        // 1. 가입된 사용자 확인
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("USER_NOT_FOUND")
+                );
+
+        // 2. 비밀번호 재설정 이메일 인증 확인
+        EmailVerification verification =
+                emailVerificationRepository
+                        .findFirstByEmailAndPurposeOrderByCreatedAtDesc(
+                                email,
+                                "RESET_PW"
+                        )
+                        .orElseThrow(() ->
+                                new IllegalArgumentException("EMAIL_NOT_VERIFIED")
+                        );
+
+        if (!"VERIFIED".equals(verification.getStatus())) {
+            throw new IllegalArgumentException("EMAIL_NOT_VERIFIED");
+        }
+
+        // 3. 새 비밀번호와 확인 비밀번호 일치 여부
+        if (!request.getNewPassword().equals(
+                request.getNewPasswordConfirm())) {
+            throw new IllegalArgumentException("PASSWORD_MISMATCH");
+        }
+
+        // 4. 비밀번호 형식 검증
+        String password = request.getNewPassword();
+
+        if (!password.matches(
+                "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]:;\"'<>,.?/]).{8,20}$"
+        )) {
+            throw new IllegalArgumentException("INVALID_PASSWORD");
+        }
+
+        // 5. 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(password);
+
+        // 6. 사용자 비밀번호 변경
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
+
+        // 7. 이메일 인증 상태 변경
+        verification.setStatus("USED");
+        emailVerificationRepository.save(verification);
     }
 
 }

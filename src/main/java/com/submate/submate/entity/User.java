@@ -50,6 +50,10 @@ public class User {
         return nickname;
     }
 
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     protected User() {
     }
 

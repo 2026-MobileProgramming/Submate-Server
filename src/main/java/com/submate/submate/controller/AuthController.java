@@ -2,10 +2,12 @@
 package com.submate.submate.controller;
 
 import com.submate.submate.dto.SignupRequest;
-import com.submate.submate.entity.User;
-import com.submate.submate.service.AuthService;
 import com.submate.submate.dto.LoginRequest;
 import com.submate.submate.dto.LoginResponse;
+import com.submate.submate.dto.PasswordResetRequest;
+import com.submate.submate.entity.User;
+import com.submate.submate.service.AuthService;
+
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -87,6 +89,48 @@ public class AuthController {
 
             return ResponseEntity.status(401).body(
                     Map.of("error", "INVALID_CREDENTIALS")
+            );
+        }
+    }
+    @PostMapping("/password/reset")
+    public ResponseEntity<?> resetPassword(
+            @RequestBody PasswordResetRequest request
+    ) {
+        try {
+            authService.resetPassword(request);
+
+            return ResponseEntity.noContent().build();
+
+        } catch (IllegalArgumentException e) {
+
+            String errorCode = e.getMessage();
+
+            if ("EMAIL_NOT_VERIFIED".equals(errorCode)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("code", "EMAIL_NOT_VERIFIED")
+                );
+            }
+
+            if ("PASSWORD_MISMATCH".equals(errorCode)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("code", "PASSWORD_MISMATCH")
+                );
+            }
+
+            if ("INVALID_PASSWORD".equals(errorCode)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("code", "INVALID_INPUT")
+                );
+            }
+
+            if ("USER_NOT_FOUND".equals(errorCode)) {
+                return ResponseEntity.status(404).body(
+                        Map.of("code", "USER_NOT_FOUND")
+                );
+            }
+
+            return ResponseEntity.badRequest().body(
+                    Map.of("code", "INVALID_INPUT")
             );
         }
     }
