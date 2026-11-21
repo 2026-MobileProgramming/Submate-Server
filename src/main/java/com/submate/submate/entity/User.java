@@ -38,6 +38,25 @@ public class User {
         return id;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
     protected User() {
     }
 
