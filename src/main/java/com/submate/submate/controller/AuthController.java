@@ -3,6 +3,8 @@ package com.submate.submate.controller;
 
 import com.submate.submate.dto.SignupRequest;
 import com.submate.submate.service.AuthService;
+import com.submate.submate.dto.LoginRequest;
+import com.submate.submate.dto.LoginResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,6 +69,22 @@ public class AuthController {
 
             return ResponseEntity.badRequest().body(
                     Map.of("error", error)
+            );
+        }
+    }
+    @PostMapping("/login")
+    public ResponseEntity<?> login(
+            @RequestBody LoginRequest request
+    ) {
+        try {
+            LoginResponse response = authService.login(request);
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+
+            return ResponseEntity.status(401).body(
+                    Map.of("error", "INVALID_CREDENTIALS")
             );
         }
     }

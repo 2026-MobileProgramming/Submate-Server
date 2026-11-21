@@ -2,6 +2,9 @@
 package com.submate.submate.service;
 
 import com.submate.submate.dto.SignupRequest;
+import com.submate.submate.dto.LoginRequest;
+import com.submate.submate.dto.LoginResponse;
+import com.submate.submate.service.JwtService;
 import com.submate.submate.entity.EmailVerification;
 import com.submate.submate.repository.EmailVerificationRepository;
 import com.submate.submate.entity.User;
@@ -19,15 +22,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final EmailVerificationRepository emailVerificationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthService(
             UserRepository userRepository,
             EmailVerificationRepository emailVerificationRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.emailVerificationRepository = emailVerificationRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Transactional
@@ -94,4 +100,42 @@ public class AuthService {
         // 10. 회원 ID 반환
         return savedUser.getId();
     }
+
+    public LoginResponse login(LoginRequest request) {
+
+        // 1. 이메일로 사용자 찾기
+        User user = userRepository.findByEmail(
+                request.getEmail().trim().toLowerCase()
+        ).orElseThrow(() ->
+                new IllegalArgumentException("INVALID_CREDENTIALS")
+        );
+
+        // 2. 비밀번호 검증
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                user.getPassword()
+        )) {
+            throw new IllegalArgumentException("INVALID_CREDENTIALS");
+        }
+
+        // 3. JWT 생성
+        String accessToken = jwtService.generateToken(user.getId());
+
+        // 4. 응답에 넣을 사용자 정보 생성
+        LoginResponse.UserInfo userInfo =
+                new LoginResponse.UserInfo(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getNickname()
+                );
+
+        // 5. 로그인 응답 반환
+        return new LoginResponse(
+                accessToken,
+                "Bearer",
+                604800,
+                userInfo
+        );
+    }
+
 }
