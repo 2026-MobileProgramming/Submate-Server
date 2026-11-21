@@ -2,11 +2,13 @@
 package com.submate.submate.controller;
 
 import com.submate.submate.dto.SignupRequest;
+import com.submate.submate.entity.User;
 import com.submate.submate.service.AuthService;
 import com.submate.submate.dto.LoginRequest;
 import com.submate.submate.dto.LoginResponse;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -87,5 +89,18 @@ public class AuthController {
                     Map.of("error", "INVALID_CREDENTIALS")
             );
         }
+    }
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+
+        User user = (User) authentication.getPrincipal();
+
+        return ResponseEntity.ok(
+                new LoginResponse.UserInfo(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getNickname()
+                )
+        );
     }
 }
