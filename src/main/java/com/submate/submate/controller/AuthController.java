@@ -21,26 +21,52 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<Map<String, Object>> signup(
+    public ResponseEntity<?> signup(
             @RequestBody SignupRequest request
     ) {
         try {
             Long userId = authService.signup(request);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(
-                    Map.of(
-                            "success", true,
-                            "message", "회원가입이 완료되었습니다.",
-                            "userId", userId
-                    )
+            return ResponseEntity.status(201).body(
+                    Map.of("userId", userId)
             );
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    Map.of(
-                            "success", false,
-                            "message", e.getMessage()
-                    )
+
+            String error = e.getMessage();
+
+            if ("EMAIL_NOT_VERIFIED".equals(error)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("error", "EMAIL_NOT_VERIFIED")
+                );
+            }
+
+            if ("DUPLICATE_EMAIL".equals(error)) {
+                return ResponseEntity.status(409).body(
+                        Map.of("error", "DUPLICATE_EMAIL")
+                );
+            }
+
+            if ("PASSWORD_MISMATCH".equals(error)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("error", "PASSWORD_MISMATCH")
+                );
+            }
+
+            if ("INVALID_PASSWORD".equals(error)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("error", "INVALID_PASSWORD")
+                );
+            }
+
+            if ("INVALID_NICKNAME".equals(error)) {
+                return ResponseEntity.badRequest().body(
+                        Map.of("error", "INVALID_NICKNAME")
+                );
+            }
+
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", error)
             );
         }
     }

@@ -1,14 +1,11 @@
-
 package com.submate.submate.dto;
 
 public class SignupRequest {
 
     private String email;
     private String password;
+    private String passwordConfirm;
     private String nickname;
-
-    public SignupRequest() {
-    }
 
     public String getEmail() {
         return email;
@@ -24,6 +21,14 @@ public class SignupRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getPasswordConfirm() {
+        return passwordConfirm;
+    }
+
+    public void setPasswordConfirm(String passwordConfirm) {
+        this.passwordConfirm = passwordConfirm;
     }
 
     public String getNickname() {

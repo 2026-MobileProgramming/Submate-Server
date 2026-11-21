@@ -20,7 +20,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/health",
                                 "/api/auth/signup",
-                                "/api/auth/email/send"
+                                "/api/auth/email/send",
+                                "/api/auth/email/verify"
                         ).permitAll()
                         .anyRequest().authenticated()
                 );

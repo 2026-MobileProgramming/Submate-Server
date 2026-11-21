@@ -4,6 +4,9 @@ import com.submate.submate.dto.EmailVerificationSendResponse;
 import com.submate.submate.entity.EmailVerification;
 import com.submate.submate.repository.EmailVerificationRepository;
 import com.submate.submate.repository.UserRepository;
+import com.submate.submate.dto.EmailVerificationVerifyRequest;
+import com.submate.submate.dto.EmailVerificationVerifyResponse;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +31,7 @@ public class EmailVerificationService {
         this.userRepository = userRepository;
         this.emailService = emailService;
     }
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public EmailVerificationSendResponse sendVerificationCode(
             String email,
             String purpose
@@ -133,5 +136,90 @@ public class EmailVerificationService {
     private String generateVerificationCode() {
         int code = secureRandom.nextInt(1000000);
         return String.format("%06d", code);
+    }
+
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
+    public EmailVerificationVerifyResponse verifyCode(
+            String email,
+            String purpose,
+            String code
+    ) {
+
+        // 1. 이메일 입력값 검사
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("INVALID_EMAIL");
+        }
+
+        email = email.trim().toLowerCase();
+
+        // 2. 인증 목적 검사
+        if (purpose == null ||
+                (!purpose.equals("SIGNUP") && !purpose.equals("RESET_PW"))) {
+            throw new IllegalArgumentException("INVALID_PURPOSE");
+        }
+
+        // 3. 인증번호 입력값 검사
+        if (code == null || !code.matches("\\d{6}")) {
+            throw new IllegalArgumentException("INVALID_CODE_FORMAT");
+        }
+
+        // 4. 해당 이메일과 목적의 PENDING 인증번호 조회
+        EmailVerification verification =
+                emailVerificationRepository
+                        .findFirstByEmailAndPurposeOrderByCreatedAtDesc(
+                                email,
+                                purpose
+                        )
+                        .orElseThrow(() ->
+                                new IllegalArgumentException("CODE_NOT_FOUND")
+                        );
+        // 인증번호가 이미 무효화된 경우
+        if (verification.getStatus().equals("INVALIDATED")) {
+
+            if (verification.getFailCount() >= 5) {
+                throw new IllegalArgumentException("TOO_MANY_ATTEMPTS");
+            }
+
+            throw new IllegalArgumentException("CODE_NOT_FOUND");
+        }
+
+        // 이미 인증 완료된 경우
+        if (verification.getStatus().equals("VERIFIED")) {
+            throw new IllegalArgumentException("CODE_NOT_FOUND");
+        }
+
+        // 5. 이미 5회 실패했는지 확인
+        if (verification.getFailCount() >= 5) {
+            verification.setStatus("INVALIDATED");
+            throw new IllegalArgumentException("TOO_MANY_ATTEMPTS");
+        }
+
+        // 6. 인증번호 만료 여부 확인
+        if (LocalDateTime.now().isAfter(verification.getExpiresAt())) {
+            verification.setStatus("INVALIDATED");
+            throw new IllegalArgumentException("CODE_EXPIRED");
+        }
+
+        // 7. 입력한 인증번호와 저장된 인증번호 비교
+        if (!verification.getCode().equals(code)) {
+
+            int failCount = verification.getFailCount() + 1;
+
+            verification.setFailCount(failCount);
+
+            if (failCount >= 5) {
+                verification.setStatus("INVALIDATED");
+            }
+
+            throw new IllegalArgumentException(
+                    "CODE_MISMATCH:" + Math.max(0, 5 - failCount)
+            );
+        }
+
+        // 8. 인증 성공 처리
+        verification.setStatus("VERIFIED");
+        verification.setVerifiedAt(LocalDateTime.now());
+
+        return new EmailVerificationVerifyResponse(true);
     }
 }
