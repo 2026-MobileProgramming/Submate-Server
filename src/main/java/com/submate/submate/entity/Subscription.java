@@ -48,6 +48,9 @@ public class Subscription {
     @Column(name = "billing_cycle", length = 10)
     private String billingCycle;
 
+    @Column(name = "billing_day")
+    private Integer billingDay;
+
     // 첫 결제일
     @Column(name = "start_date")
     private LocalDate startDate;
@@ -60,6 +63,9 @@ public class Subscription {
 
     @Column(length = 500)
     private String memo;
+
+    @Column(name = "package_name", length = 150)
+    private String packageName;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -122,6 +128,10 @@ public class Subscription {
         return billingCycle;
     }
 
+    public Integer getBillingDay() {
+        return billingDay;
+    }
+
     public LocalDate getStartDate() {
         return startDate;
     }
@@ -136,6 +146,10 @@ public class Subscription {
 
     public String getMemo() {
         return memo;
+    }
+
+    public String getPackageName() {
+        return packageName;
     }
 
     public LocalDateTime getCreatedAt() {

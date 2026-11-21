@@ -21,6 +21,9 @@ public class Payment {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(name = "service_name", nullable = false, length = 50)
+    private String serviceName;
+
     @Column(name = "paid_date", nullable = false)
     private LocalDate paidDate;
 
@@ -68,6 +71,10 @@ public class Payment {
 
     public User getUser() {
         return user;
+    }
+
+    public String getServiceName() {
+        return serviceName;
     }
 
     public LocalDate getPaidDate() {

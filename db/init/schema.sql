@@ -49,16 +49,6 @@ CREATE TABLE services (
     CONSTRAINT fk_services_category FOREIGN KEY (category_id) REFERENCES categories (id)
 );
 
--- 5. SERVICE_PACKAGES
-CREATE TABLE service_packages (
-    id            INT          NOT NULL AUTO_INCREMENT,
-    service_id    INT          NOT NULL,
-    package_name  VARCHAR(150) NOT NULL,
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_service_packages_package (package_name),
-    CONSTRAINT fk_service_packages_service FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE CASCADE
-);
-
 -- 6. SUBSCRIPTIONS
 CREATE TABLE subscriptions (
     id              BIGINT        NOT NULL AUTO_INCREMENT,
@@ -71,10 +61,12 @@ CREATE TABLE subscriptions (
     currency        CHAR(3)       NULL,
     amount          DECIMAL(12,2) NULL,
     billing_cycle   VARCHAR(10)   NULL,
+    billing_day     INT           NULL,
     start_date      DATE          NULL,
     trial_end_date  DATE          NULL,
     cancel_date     DATE          NULL,
     memo            VARCHAR(500)  NULL,
+    package_name    VARCHAR(150)  NULL,
     created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
@@ -87,15 +79,17 @@ CREATE TABLE subscriptions (
     CONSTRAINT chk_sub_currency      CHECK (currency IN ('KRW', 'JPY', 'USD')),
     CONSTRAINT chk_sub_amount        CHECK (amount >= 0),
     CONSTRAINT chk_sub_billing_cycle CHECK (billing_cycle IN ('MONTHLY', 'YEARLY')),
+    CONSTRAINT chk_sub_billing_day   CHECK (billing_day BETWEEN 1 AND 31),
     CONSTRAINT chk_sub_plan_rule CHECK (
         (plan_type = 'PAID'
             AND currency IS NOT NULL AND amount IS NOT NULL
-            AND billing_cycle IS NOT NULL AND start_date IS NOT NULL
-            AND trial_end_date IS NULL)
+            AND billing_cycle IS NOT NULL AND billing_day IS NOT NULL
+            AND start_date IS NOT NULL AND trial_end_date IS NULL)
         OR
         (plan_type = 'TRIAL'
             AND trial_end_date IS NOT NULL
-            AND currency IS NULL AND amount IS NULL AND billing_cycle IS NULL)
+            AND currency IS NULL AND amount IS NULL
+            AND billing_cycle IS NULL AND billing_day IS NULL)
     )
 );
 
@@ -104,6 +98,7 @@ CREATE TABLE payments (
     id               BIGINT        NOT NULL AUTO_INCREMENT,
     subscription_id  BIGINT        NOT NULL,
     user_id          BIGINT        NOT NULL,
+    service_name     VARCHAR(50)   NOT NULL,
     paid_date        DATE          NOT NULL,
     billing_cycle    VARCHAR(10)   NOT NULL,
     currency         CHAR(3)       NOT NULL,
