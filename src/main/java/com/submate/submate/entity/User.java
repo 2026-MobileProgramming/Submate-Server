@@ -57,6 +57,10 @@ public class User {
         return createdAt;
     }
 
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
     protected User() {
     }
 
