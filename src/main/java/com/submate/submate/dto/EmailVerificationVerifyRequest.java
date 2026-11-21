@@ -24,6 +24,7 @@ public class EmailVerificationVerifyRequest {
     public void setPurpose(String purpose) {
         this.purpose = purpose;
     }
+
     public String getCode() {
         return code;
     }
