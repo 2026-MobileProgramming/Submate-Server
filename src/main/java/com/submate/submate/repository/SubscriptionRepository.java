@@ -10,6 +10,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findByUserId(Long userId);
 
+    List<Subscription> findByUserIdOrderByIdAsc(Long userId);
+
     List<Subscription> findByUserIdAndStatus(Long userId, String status);
 
     // 본인 구독만 조회 (남의 구독이면 비어 있음 → 404)

@@ -6,6 +6,7 @@ public class SubscriptionCreateRequest {
 
     private String category;
     private String serviceName;
+    private String status;
     private String planType;
     private String currency;
     private BigDecimal amount;
@@ -101,5 +102,13 @@ public class SubscriptionCreateRequest {
 
     public void setPackageName(String packageName) {
         this.packageName = packageName;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

@@ -213,4 +213,9 @@ public class Subscription {
         this.memo = memo;
         this.packageName = packageName;
     }
+
+    public void changeStatus(String status, LocalDate cancelDate) {
+        this.status = status;
+        this.cancelDate = cancelDate;
+    }
 }
