@@ -1,5 +1,7 @@
 package com.submate.submate.dto;
 
+import com.submate.submate.common.CategoryCode;
+import com.submate.submate.common.PaymentDateCalculator;
 import com.submate.submate.entity.Subscription;
 
 import java.math.BigDecimal;
@@ -29,7 +31,7 @@ public class SubscriptionResponse {
     public SubscriptionResponse(Subscription subscription) {
 
         this.id = subscription.getId();
-        this.category = subscription.getCategory().getName();
+        this.category = CategoryCode.fromId(subscription.getCategory().getId()).name();
         this.serviceName = subscription.getServiceName();
         this.status = subscription.getStatus();
 
@@ -99,29 +101,19 @@ public class SubscriptionResponse {
             return null;
         }
 
-        LocalDate today = LocalDate.now();
-        LocalDate paymentDate = subscription.getStartDate();
+        LocalDate nextPaymentDate = PaymentDateCalculator.nextPaymentDate(
+                subscription.getBillingCycle(),
+                subscription.getStartDate(),
+                subscription.getBillingDay(),
+                LocalDate.now()
+        );
 
-        // 시작일이 오늘보다 이전이라면 다음 결제일을 계산
-        while (paymentDate.isBefore(today)) {
-
-            if ("YEARLY".equals(subscription.getBillingCycle())) {
-                paymentDate = paymentDate.plusYears(1);
-            } else {
-                paymentDate = paymentDate.plusMonths(1);
-
-                // 매월 결제일 기준으로 계산 (31일 등 말일 처리)
-                int billingDay = subscription.getBillingDay();
-
-                int lastDay = paymentDate.lengthOfMonth();
-
-                paymentDate = paymentDate.withDayOfMonth(
-                        Math.min(billingDay, lastDay)
-                );
-            }
+        if (subscription.getCancelDate() != null
+                && !nextPaymentDate.isBefore(subscription.getCancelDate())) {
+            return null;
         }
 
-        return paymentDate;
+        return nextPaymentDate;
     }
 
     public Long getId() {
