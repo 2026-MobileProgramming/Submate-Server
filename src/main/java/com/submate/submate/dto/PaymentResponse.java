@@ -25,7 +25,7 @@ public class PaymentResponse {
         Subscription subscription = payment.getSubscription();
         this.id = payment.getId();
         this.subscriptionId = subscription.getId();
-        this.serviceName = payment.getServiceName();
+        this.serviceName = subscription.getServiceName();
         this.category = CategoryCode.fromId(subscription.getCategory().getId()).name();
         this.paidDate = payment.getPaidDate();
         this.billingCycle = payment.getBillingCycle();

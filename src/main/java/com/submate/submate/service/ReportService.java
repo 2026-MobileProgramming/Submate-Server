@@ -420,7 +420,7 @@ public class ReportService {
 
             results.add(new ReportPayment(
                     subscription.getId(),
-                    payment.getServiceName(),
+                    subscription.getServiceName(),
                     CategoryCode.fromId(subscription.getCategory().getId()).name(),
                     payment.getPaidDate(),
                     payment.getAmountKrw().longValue()
