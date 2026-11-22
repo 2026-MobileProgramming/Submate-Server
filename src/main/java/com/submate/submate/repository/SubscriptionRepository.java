@@ -14,4 +14,11 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     // 본인 구독만 조회 (남의 구독이면 비어 있음 → 404)
     Optional<Subscription> findByIdAndUserId(Long id, Long userId);
+
+    // 내 구독 현황 개수 (앱 SubscribeSummary와 같은 기준)
+    long countByUserIdAndStatusNot(Long userId, String status);
+
+    long countByUserIdAndPlanTypeAndStatusNot(Long userId, String planType, String status);
+
+    long countByUserIdAndPlanTypeAndStatus(Long userId, String planType, String status);
 }

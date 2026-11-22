@@ -17,6 +17,9 @@ public class UserResponse {
     private String email;
     private String nickname;
     private LocalDateTime createdAt;
+    private long subscribingCount;
+    private long freeTrialCount;
+    private long cancelScheduledCount;
 
     public UserResponse(
             Long id,
@@ -28,6 +31,21 @@ public class UserResponse {
         this.email = email;
         this.nickname = nickname;
         this.createdAt = createdAt;
+    }
+
+    public UserResponse(
+            Long id,
+            String email,
+            String nickname,
+            LocalDateTime createdAt,
+            long subscribingCount,
+            long freeTrialCount,
+            long cancelScheduledCount
+    ) {
+        this(id, email, nickname, createdAt);
+        this.subscribingCount = subscribingCount;
+        this.freeTrialCount = freeTrialCount;
+        this.cancelScheduledCount = cancelScheduledCount;
     }
 
     public Long getId() {
@@ -44,5 +62,17 @@ public class UserResponse {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public long getSubscribingCount() {
+        return subscribingCount;
+    }
+
+    public long getFreeTrialCount() {
+        return freeTrialCount;
+    }
+
+    public long getCancelScheduledCount() {
+        return cancelScheduledCount;
     }
 }
