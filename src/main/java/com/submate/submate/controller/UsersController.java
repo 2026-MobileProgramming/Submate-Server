@@ -3,6 +3,7 @@ package com.submate.submate.controller;
 import com.submate.submate.dto.UserResponse;
 import com.submate.submate.dto.NicknameUpdateRequest;
 import com.submate.submate.entity.User;
+import com.submate.submate.repository.SubscriptionRepository;
 import com.submate.submate.repository.UserRepository;
 
 import org.springframework.security.core.Authentication;
@@ -19,9 +20,11 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 public class UsersController {
 
     private final UserRepository userRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
-    public UsersController(UserRepository userRepository) {
+    public UsersController(UserRepository userRepository, SubscriptionRepository subscriptionRepository) {
         this.userRepository = userRepository;
+        this.subscriptionRepository = subscriptionRepository;
     }
 
     @GetMapping("/me")
@@ -29,12 +32,7 @@ public class UsersController {
 
         User user = (User) authentication.getPrincipal();
 
-        return new UserResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getNickname(),
-                user.getCreatedAt()
-        );
+        return toResponse(user);
     }
     @PatchMapping("/me")
     public ResponseEntity<?> updateNickname(
@@ -57,14 +55,7 @@ public class UsersController {
         user.setNickname(nickname);
         userRepository.save(user);
 
-        return ResponseEntity.ok(
-                new UserResponse(
-                        user.getId(),
-                        user.getEmail(),
-                        user.getNickname(),
-                        user.getCreatedAt()
-                )
-        );
+        return ResponseEntity.ok(toResponse(user));
     }
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteMyAccount(
@@ -75,5 +66,18 @@ public class UsersController {
         userRepository.delete(user);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private UserResponse toResponse(User user) {
+        Long userId = user.getId();
+        return new UserResponse(
+                userId,
+                user.getEmail(),
+                user.getNickname(),
+                user.getCreatedAt(),
+                subscriptionRepository.countByUserIdAndStatusNot(userId, "CANCELED"),
+                subscriptionRepository.countByUserIdAndPlanTypeAndStatusNot(userId, "TRIAL", "CANCELED"),
+                subscriptionRepository.countByUserIdAndPlanTypeAndStatus(userId, "PAID", "CANCEL_SCHEDULED")
+        );
     }
 }
