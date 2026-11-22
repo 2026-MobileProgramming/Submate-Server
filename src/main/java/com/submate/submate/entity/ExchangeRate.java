@@ -29,6 +29,18 @@ public class ExchangeRate {
     protected ExchangeRate() {
     }
 
+    public ExchangeRate(LocalDate rateDate, String currency, BigDecimal rateToKrw) {
+        this.rateDate = rateDate;
+        this.currency = currency;
+        this.rateToKrw = rateToKrw;
+    }
+
+    // 같은 날짜 환율을 다시 받았을 때 값 갱신
+    public void updateRate(BigDecimal rateToKrw) {
+        this.rateToKrw = rateToKrw;
+        this.fetchedAt = LocalDateTime.now();
+    }
+
     @PrePersist
     protected void onCreate() {
         if (fetchedAt == null) {
