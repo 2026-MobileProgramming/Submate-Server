@@ -23,4 +23,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     // 스케줄러 중복 방지 확인
     boolean existsBySubscriptionIdAndPaidDate(Long subscriptionId, LocalDate paidDate);
+
+    // 리포트용 전체 결제 내역 조회 (구독 및 카테고리 포함)
+    @Query("select p from Payment p " +
+            "join fetch p.subscription s " +
+            "join fetch s.category " +
+            "where p.user.id = :userId " +
+            "order by p.paidDate asc, p.id asc")
+    List<Payment> findAllForReport(@Param("userId") Long userId);
 }
