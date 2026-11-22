@@ -1,12 +1,12 @@
 package com.submate.submate.controller;
 
+import com.submate.submate.dto.SubscriptionCreateRequest;
 import com.submate.submate.dto.SubscriptionResponse;
+import com.submate.submate.dto.SubscriptionUpdateRequest;
 import com.submate.submate.entity.User;
 import com.submate.submate.service.SubscriptionService;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -25,11 +25,45 @@ public class SubscriptionController {
     public List<SubscriptionResponse> getMySubscriptions(
             Authentication authentication
     ) {
-
-        // 현재 로그인한 사용자 정보 가져오기
         User user = (User) authentication.getPrincipal();
 
-        // 사용자 ID로 구독 목록 조회
         return subscriptionService.getMySubscriptions(user.getId());
+    }
+
+    // 구독 등록
+    @PostMapping
+    public SubscriptionResponse createSubscription(
+            Authentication authentication,
+            @RequestBody SubscriptionCreateRequest request
+    ) {
+        User user = (User) authentication.getPrincipal();
+
+        return subscriptionService.createSubscription(user, request);
+    }
+    @PutMapping("/{id}")
+    public SubscriptionResponse updateSubscription(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestBody SubscriptionUpdateRequest request
+    ) {
+        User user = (User) authentication.getPrincipal();
+
+        return subscriptionService.updateSubscription(
+                user.getId(),
+                id,
+                request
+        );
+    }
+    @DeleteMapping("/{id}")
+    public void deleteSubscription(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+        User user = (User) authentication.getPrincipal();
+
+        subscriptionService.deleteSubscription(
+                user.getId(),
+                id
+        );
     }
 }

@@ -75,6 +75,35 @@ public class Subscription {
 
     protected Subscription() {
     }
+    public Subscription(
+            User user,
+            Category category,
+            ServiceItem service,
+            String serviceName,
+            String planType,
+            String currency,
+            BigDecimal amount,
+            String billingCycle,
+            Integer billingDay,
+            LocalDate startDate,
+            LocalDate trialEndDate,
+            String memo,
+            String packageName
+    ) {
+        this.user = user;
+        this.category = category;
+        this.service = service;
+        this.serviceName = serviceName;
+        this.planType = planType;
+        this.currency = currency;
+        this.amount = amount;
+        this.billingCycle = billingCycle;
+        this.billingDay = billingDay;
+        this.startDate = startDate;
+        this.trialEndDate = trialEndDate;
+        this.memo = memo;
+        this.packageName = packageName;
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -158,5 +187,30 @@ public class Subscription {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+    public void updateSubscription(
+            Category category,
+            String serviceName,
+            String planType,
+            String currency,
+            BigDecimal amount,
+            String billingCycle,
+            Integer billingDay,
+            LocalDate startDate,
+            LocalDate trialEndDate,
+            String memo,
+            String packageName
+    ) {
+        this.category = category;
+        this.serviceName = serviceName;
+        this.planType = planType;
+        this.currency = currency;
+        this.amount = amount;
+        this.billingCycle = billingCycle;
+        this.billingDay = billingDay;
+        this.startDate = startDate;
+        this.trialEndDate = trialEndDate;
+        this.memo = memo;
+        this.packageName = packageName;
     }
 }
