@@ -5,6 +5,10 @@ import com.submate.submate.common.CategoryCode;
 import com.submate.submate.dto.ReportServiceResponse;
 import com.submate.submate.dto.ReportCategoryResponse;
 import com.submate.submate.dto.MonthlyReportResponse;
+import com.submate.submate.dto.YearlyReportResponse;
+import com.submate.submate.dto.ReportMonthResponse;
+import com.submate.submate.dto.AllReportResponse;
+import com.submate.submate.dto.ReportYearResponse;
 import com.submate.submate.repository.PaymentRepository;
 import com.submate.submate.repository.ExchangeRateRepository;
 import com.submate.submate.repository.SubscriptionRepository;
@@ -22,6 +26,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.TreeMap;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -127,6 +134,248 @@ public class ReportService {
                 previousMonthDiffKrw,
                 services,
                 categories
+        );
+    }
+
+    public YearlyReportResponse getYearlyReport(Long userId, int year) {
+
+        LocalDate today = LocalDate.now();
+        YearMonth currentMonth = YearMonth.from(today);
+
+        List<Subscription> subscriptions =
+                subscriptionRepository.findByUserId(userId);
+
+        List<Payment> payments =
+                paymentRepository.findAllForReport(userId);
+
+        List<ReportPayment> reportPayments =
+                calculateReportPayments(subscriptions, payments);
+
+        Map<YearMonth, Long> monthlyAmounts =
+                calculateMonthlyAmounts(reportPayments);
+
+        List<ReportMonthResponse> months = new ArrayList<>();
+        Map<String, Long> yearlyCategoryAmounts = new HashMap<>();
+
+        long totalAmountKrw = 0;
+
+        // 항상 1월부터 12월까지 생성
+        for (int month = 1; month <= 12; month++) {
+
+            YearMonth targetMonth = YearMonth.of(year, month);
+            boolean future = targetMonth.isAfter(currentMonth);
+
+            if (future) {
+                months.add(new ReportMonthResponse(
+                        month,
+                        0L,
+                        true,
+                        List.of()
+                ));
+                continue;
+            }
+
+            long amountKrw =
+                    monthlyAmounts.getOrDefault(targetMonth, 0L);
+
+            totalAmountKrw += amountKrw;
+
+            Map<String, Long> monthlyCategories =
+                    calculateMonthlyCategoryAmounts(
+                            reportPayments,
+                            targetMonth
+                    );
+
+            // 연간 카테고리 합계에 반영
+            for (Map.Entry<String, Long> entry
+                    : monthlyCategories.entrySet()) {
+
+                yearlyCategoryAmounts.merge(
+                        entry.getKey(),
+                        entry.getValue(),
+                        Long::sum
+                );
+            }
+
+            // 월별 카테고리는 비율 없이 금액만 전달
+            List<ReportCategoryResponse> monthCategories =
+                    new ArrayList<>();
+
+            monthlyCategories.entrySet().stream()
+                    .sorted(
+                            Map.Entry.<String, Long>comparingByValue()
+                                    .reversed()
+                    )
+                    .forEach(entry ->
+                            monthCategories.add(
+                                    new ReportCategoryResponse(
+                                            entry.getKey(),
+                                            entry.getValue()
+                                    )
+                            )
+                    );
+
+            months.add(new ReportMonthResponse(
+                    month,
+                    amountKrw,
+                    false,
+                    monthCategories
+            ));
+        }
+
+        // 연간 카테고리 비율
+        List<ReportCategoryResponse> categories =
+                calculateCategoryRatios(yearlyCategoryAmounts);
+
+        // 월평균 계산
+        int divisor = 12;
+
+        if (year == today.getYear()) {
+
+            // 올해 첫 결제 발생 월부터 현재 월까지
+            int firstPaymentMonth = reportPayments.stream()
+                    .filter(p -> p.paymentDate().getYear() == year)
+                    .mapToInt(p -> p.paymentDate().getMonthValue())
+                    .min()
+                    .orElse(today.getMonthValue());
+
+            divisor = today.getMonthValue() - firstPaymentMonth + 1;
+        }
+
+        long monthlyAverageKrw = Math.round(
+                (double) totalAmountKrw / divisor
+        );
+
+        return new YearlyReportResponse(
+                year,
+                totalAmountKrw,
+                monthlyAverageKrw,
+                categories,
+                months
+        );
+    }
+
+
+    public AllReportResponse getAllReport(Long userId) {
+
+        LocalDate today = LocalDate.now();
+        int currentYear = today.getYear();
+
+        List<Subscription> subscriptions =
+                subscriptionRepository.findByUserId(userId);
+
+        List<Payment> payments =
+                paymentRepository.findAllForReport(userId);
+
+        // 오늘까지 도래한 결제 일정
+        List<ReportPayment> reportPayments =
+                calculateReportPayments(subscriptions, payments);
+
+        Map<Integer, Long> yearlyAmounts = new TreeMap<>();
+        Map<String, Long> categoryAmounts = new HashMap<>();
+        Set<Long> paidSubscriptionIds = new HashSet<>();
+
+        YearMonth startMonth = null;
+        long totalAmountKrw = 0;
+
+        for (ReportPayment payment : reportPayments) {
+
+            YearMonth paymentMonth =
+                    YearMonth.from(payment.paymentDate());
+
+            if (startMonth == null
+                    || paymentMonth.isBefore(startMonth)) {
+                startMonth = paymentMonth;
+            }
+
+            totalAmountKrw += payment.amountKrw();
+
+            yearlyAmounts.merge(
+                    payment.paymentDate().getYear(),
+                    payment.amountKrw(),
+                    Long::sum
+            );
+
+            categoryAmounts.merge(
+                    payment.category(),
+                    payment.amountKrw(),
+                    Long::sum
+            );
+
+            paidSubscriptionIds.add(payment.subscriptionId());
+        }
+
+        // 올해 남은 결제 예정 금액
+        long remainingAmountKrw = 0;
+
+        LocalDate tomorrow = today.plusDays(1);
+        LocalDate yearEnd = LocalDate.of(currentYear, 12, 31);
+
+        if (!tomorrow.isAfter(yearEnd)) {
+
+            for (Subscription subscription : subscriptions) {
+
+                if (!"PAID".equals(subscription.getPlanType())
+                        || subscription.getStartDate() == null
+                        || subscription.getBillingCycle() == null
+                        || subscription.getBillingDay() == null
+                        || subscription.getAmount() == null) {
+                    continue;
+                }
+
+                LocalDate endDate = yearEnd;
+
+                if (subscription.getCancelDate() != null
+                        && subscription.getCancelDate().isBefore(endDate)) {
+                    endDate = subscription.getCancelDate();
+                }
+
+                if (tomorrow.isAfter(endDate)) {
+                    continue;
+                }
+
+                List<LocalDate> futureDates =
+                        PaymentDateCalculator.paymentDatesBetween(
+                                subscription.getBillingCycle(),
+                                subscription.getStartDate(),
+                                subscription.getBillingDay(),
+                                tomorrow,
+                                endDate
+                        );
+
+                long amountKrw = convertToKrw(subscription);
+
+                remainingAmountKrw +=
+                        amountKrw * futureDates.size();
+            }
+        }
+
+        long expectedAmountKrw =
+                yearlyAmounts.getOrDefault(currentYear, 0L)
+                        + remainingAmountKrw;
+
+        // 올해는 결제 기록이 없어도 예상 금액을 표시
+        yearlyAmounts.putIfAbsent(currentYear, 0L);
+
+        List<ReportYearResponse> years = new ArrayList<>();
+
+        for (Map.Entry<Integer, Long> entry : yearlyAmounts.entrySet()) {
+
+            int year = entry.getKey();
+
+            years.add(new ReportYearResponse(
+                    year,
+                    entry.getValue(),
+                    year == currentYear ? expectedAmountKrw : null
+            ));
+        }
+
+        return new AllReportResponse(
+                startMonth == null ? null : startMonth.toString(),
+                totalAmountKrw,
+                paidSubscriptionIds.size(),
+                calculateCategoryRatios(categoryAmounts),
+                years
         );
     }
 
