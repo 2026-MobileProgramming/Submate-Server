@@ -36,6 +36,10 @@ import java.math.RoundingMode;
 @Transactional(readOnly = true)
 public class ReportService {
 
+    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    private static final BigDecimal DEFAULT_USD_RATE = new BigDecimal("1357");
+    private static final BigDecimal DEFAULT_JPY_RATE = new BigDecimal("9.1");
+
     private final PaymentRepository paymentRepository;
     private final ExchangeRateRepository exchangeRateRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -64,15 +68,15 @@ public class ReportService {
         }
 
         // USD, JPY는 저장된 최신 환율 사용
-        ExchangeRate exchangeRate = exchangeRateRepository
+        BigDecimal rateToKrw = exchangeRateRepository
                 .findTopByCurrencyOrderByRateDateDesc(currency)
-                .orElseThrow(() -> new IllegalStateException(
-                        "저장된 환율이 없습니다: " + currency
-                ));
+                .map(ExchangeRate::getRateToKrw)
+                .orElse("JPY".equals(currency) ? DEFAULT_JPY_RATE : DEFAULT_USD_RATE);
 
         return amount
-                .multiply(exchangeRate.getRateToKrw())
-                .setScale(0, RoundingMode.HALF_UP)
+                .multiply(rateToKrw)
+                .divide(HUNDRED, 0, RoundingMode.HALF_UP)
+                .multiply(HUNDRED)
                 .longValue();
     }
 
@@ -316,6 +320,7 @@ public class ReportService {
             for (Subscription subscription : subscriptions) {
 
                 if (!"PAID".equals(subscription.getPlanType())
+                        || "CANCELED".equals(subscription.getStatus())
                         || subscription.getStartDate() == null
                         || subscription.getBillingCycle() == null
                         || subscription.getBillingDay() == null
@@ -326,8 +331,8 @@ public class ReportService {
                 LocalDate endDate = yearEnd;
 
                 if (subscription.getCancelDate() != null
-                        && subscription.getCancelDate().isBefore(endDate)) {
-                    endDate = subscription.getCancelDate();
+                        && subscription.getCancelDate().minusDays(1).isBefore(endDate)) {
+                    endDate = subscription.getCancelDate().minusDays(1);
                 }
 
                 if (tomorrow.isAfter(endDate)) {
@@ -399,9 +404,33 @@ public class ReportService {
                     .put(payment.getPaidDate(), payment);
         }
 
+        Map<Long, Subscription> subscriptionMap = new HashMap<>();
+
+        for (Subscription subscription : subscriptions) {
+            subscriptionMap.put(subscription.getId(), subscription);
+        }
+
+        for (Payment payment : payments) {
+
+            Subscription subscription = subscriptionMap.get(payment.getSubscription().getId());
+
+            if (subscription == null || payment.getPaidDate().isAfter(today)) {
+                continue;
+            }
+
+            results.add(new ReportPayment(
+                    subscription.getId(),
+                    subscription.getServiceName(),
+                    CategoryCode.fromId(subscription.getCategory().getId()).name(),
+                    payment.getPaidDate(),
+                    payment.getAmountKrw().longValue()
+            ));
+        }
+
         for (Subscription subscription : subscriptions) {
 
             if (!"PAID".equals(subscription.getPlanType())
+                    || "CANCELED".equals(subscription.getStatus())
                     || subscription.getStartDate() == null
                     || subscription.getBillingCycle() == null
                     || subscription.getBillingDay() == null
@@ -413,8 +442,8 @@ public class ReportService {
             LocalDate endDate = today;
 
             if (subscription.getCancelDate() != null
-                    && subscription.getCancelDate().isBefore(endDate)) {
-                endDate = subscription.getCancelDate();
+                    && subscription.getCancelDate().minusDays(1).isBefore(endDate)) {
+                endDate = subscription.getCancelDate().minusDays(1);
             }
 
             if (startDate.isAfter(endDate)) {
@@ -435,11 +464,11 @@ public class ReportService {
 
             for (LocalDate paymentDate : paymentDates) {
 
-                Payment payment = subscriptionPayments.get(paymentDate);
+                if (subscriptionPayments.containsKey(paymentDate)) {
+                    continue;
+                }
 
-                long amountKrw = payment != null
-                        ? payment.getAmountKrw().longValue()
-                        : convertToKrw(subscription);
+                long amountKrw = convertToKrw(subscription);
 
                 String category = CategoryCode
                         .fromId(subscription.getCategory().getId())

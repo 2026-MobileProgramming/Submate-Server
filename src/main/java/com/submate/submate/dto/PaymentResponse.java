@@ -7,7 +7,7 @@ import com.submate.submate.entity.Subscription;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-// GET /api/payments 응답 항목 (금액·환율·서비스명은 결제 당시 값)
+// GET /api/payments 응답 항목 (금액·환율은 결제 당시 값)
 public class PaymentResponse {
 
     private final Long id;
@@ -25,7 +25,7 @@ public class PaymentResponse {
         Subscription subscription = payment.getSubscription();
         this.id = payment.getId();
         this.subscriptionId = subscription.getId();
-        this.serviceName = payment.getServiceName();
+        this.serviceName = subscription.getServiceName();
         this.category = CategoryCode.fromId(subscription.getCategory().getId()).name();
         this.paidDate = payment.getPaidDate();
         this.billingCycle = payment.getBillingCycle();
