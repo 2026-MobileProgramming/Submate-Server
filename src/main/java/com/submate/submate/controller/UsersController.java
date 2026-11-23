@@ -1,5 +1,7 @@
 package com.submate.submate.controller;
 
+import com.submate.submate.common.ApiErrorCode;
+import com.submate.submate.common.ApiException;
 import com.submate.submate.dto.UserResponse;
 import com.submate.submate.dto.NicknameUpdateRequest;
 import com.submate.submate.entity.User;
@@ -35,7 +37,7 @@ public class UsersController {
         return toResponse(user);
     }
     @PatchMapping("/me")
-    public ResponseEntity<?> updateNickname(
+    public ResponseEntity<UserResponse> updateNickname(
             Authentication authentication,
             @RequestBody NicknameUpdateRequest request
     ) {
@@ -47,9 +49,7 @@ public class UsersController {
         if (nickname == null ||
                 !nickname.matches("^[가-힣a-zA-Z0-9]{1,8}$")) {
 
-            return ResponseEntity.badRequest().body(
-                    java.util.Map.of("code", "INVALID_NICKNAME")
-            );
+            throw new ApiException(ApiErrorCode.INVALID_NICKNAME);
         }
 
         user.setNickname(nickname);

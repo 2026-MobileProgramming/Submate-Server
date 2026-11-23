@@ -1,6 +1,8 @@
 
 package com.submate.submate.service;
 
+import com.submate.submate.common.ApiErrorCode;
+import com.submate.submate.common.ApiException;
 import com.submate.submate.dto.SignupRequest;
 import com.submate.submate.dto.LoginRequest;
 import com.submate.submate.dto.LoginResponse;
@@ -41,7 +43,7 @@ public class AuthService {
     public Long signup(SignupRequest request) {
 
         // 1. 이메일 정리
-        String email = request.getEmail().trim().toLowerCase();
+        String email = requireEmail(request.getEmail(), ApiErrorCode.INVALID_INPUT);
 
         // 2. 이메일 인증 확인
         EmailVerification verification = emailVerificationRepository
@@ -51,28 +53,27 @@ public class AuthService {
                         "VERIFIED"
                 )
                 .orElseThrow(() ->
-                        new IllegalArgumentException("EMAIL_NOT_VERIFIED")
+                        new ApiException(ApiErrorCode.EMAIL_NOT_VERIFIED)
                 );
 
         // 3. 중복 이메일 확인
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("DUPLICATE_EMAIL");
+            throw new ApiException(ApiErrorCode.DUPLICATE_EMAIL);
         }
 
         // 4. 비밀번호 확인
-        if (!request.getPassword().equals(request.getPasswordConfirm())) {
-            throw new IllegalArgumentException("PASSWORD_MISMATCH");
+        String password = request.getPassword();
+        if (password != null && !password.equals(request.getPasswordConfirm())) {
+            throw new ApiException(ApiErrorCode.PASSWORD_MISMATCH);
         }
 
         // 5. 비밀번호 형식 확인
-        String password = request.getPassword();
-
         if (password == null ||
                 !Pattern.matches(
                         "^[A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?~]{8,20}$",
                         password
                 )) {
-            throw new IllegalArgumentException("INVALID_PASSWORD");
+            throw new ApiException(ApiErrorCode.INVALID_PASSWORD);
         }
 
         // 6. 닉네임 형식 확인
@@ -80,7 +81,7 @@ public class AuthService {
 
         if (nickname == null ||
                 !Pattern.matches("^[가-힣a-zA-Z0-9]{1,8}$", nickname)) {
-            throw new IllegalArgumentException("INVALID_NICKNAME");
+            throw new ApiException(ApiErrorCode.INVALID_NICKNAME);
         }
 
         // 7. 비밀번호 암호화
@@ -106,17 +107,17 @@ public class AuthService {
 
         // 1. 이메일로 사용자 찾기
         User user = userRepository.findByEmail(
-                request.getEmail().trim().toLowerCase()
+                requireEmail(request.getEmail(), ApiErrorCode.INVALID_CREDENTIALS)
         ).orElseThrow(() ->
-                new IllegalArgumentException("INVALID_CREDENTIALS")
+                new ApiException(ApiErrorCode.INVALID_CREDENTIALS)
         );
 
         // 2. 비밀번호 검증
-        if (!passwordEncoder.matches(
+        if (request.getPassword() == null || !passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword()
         )) {
-            throw new IllegalArgumentException("INVALID_CREDENTIALS");
+            throw new ApiException(ApiErrorCode.INVALID_CREDENTIALS);
         }
 
         // 3. JWT 생성
@@ -141,12 +142,12 @@ public class AuthService {
     @Transactional
     public void resetPassword(PasswordResetRequest request) {
 
-        String email = request.getEmail().trim().toLowerCase();
+        String email = requireEmail(request.getEmail(), ApiErrorCode.INVALID_INPUT);
 
         // 1. 가입된 사용자 확인
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("USER_NOT_FOUND")
+                        new ApiException(ApiErrorCode.USER_NOT_FOUND)
                 );
 
         // 2. 비밀번호 재설정 이메일 인증 확인
@@ -157,26 +158,24 @@ public class AuthService {
                                 "RESET_PW"
                         )
                         .orElseThrow(() ->
-                                new IllegalArgumentException("EMAIL_NOT_VERIFIED")
+                                new ApiException(ApiErrorCode.EMAIL_NOT_VERIFIED)
                         );
 
         if (!"VERIFIED".equals(verification.getStatus())) {
-            throw new IllegalArgumentException("EMAIL_NOT_VERIFIED");
+            throw new ApiException(ApiErrorCode.EMAIL_NOT_VERIFIED);
         }
 
         // 3. 새 비밀번호와 확인 비밀번호 일치 여부
-        if (!request.getNewPassword().equals(
-                request.getNewPasswordConfirm())) {
-            throw new IllegalArgumentException("PASSWORD_MISMATCH");
+        String password = request.getNewPassword();
+        if (password != null && !password.equals(request.getNewPasswordConfirm())) {
+            throw new ApiException(ApiErrorCode.PASSWORD_MISMATCH);
         }
 
         // 4. 비밀번호 형식 검증
-        String password = request.getNewPassword();
-
-        if (!password.matches(
+        if (password == null || !password.matches(
                 "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-={}\\[\\]:;\"'<>,.?/]).{8,20}$"
         )) {
-            throw new IllegalArgumentException("INVALID_PASSWORD");
+            throw new ApiException(ApiErrorCode.INVALID_PASSWORD);
         }
 
         // 5. 비밀번호 암호화
@@ -191,4 +190,10 @@ public class AuthService {
         emailVerificationRepository.save(verification);
     }
 
+    private String requireEmail(String email, ApiErrorCode errorCode) {
+        if (email == null || email.isBlank()) {
+            throw new ApiException(errorCode);
+        }
+        return email.trim().toLowerCase();
+    }
 }

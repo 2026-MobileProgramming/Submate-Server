@@ -31,7 +31,7 @@ public enum CategoryCode {
         throw new IllegalArgumentException("알 수 없는 카테고리 ID: " + id);
     }
 
-    // 앱에서 받은 문자열을 변환 (없는 값이면 IllegalArgumentException)
+    // 앱에서 받은 카테고리 문자열을 변환
     public static CategoryCode fromName(String name) {
         if (name != null) {
             for (CategoryCode code : values()) {
@@ -40,6 +40,6 @@ public enum CategoryCode {
                 }
             }
         }
-        throw new IllegalArgumentException("알 수 없는 카테고리: " + name);
+        throw new ApiException(ApiErrorCode.INVALID_INPUT, "존재하지 않는 카테고리입니다.");
     }
 }

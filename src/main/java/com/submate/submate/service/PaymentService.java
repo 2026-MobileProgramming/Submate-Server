@@ -1,5 +1,7 @@
 package com.submate.submate.service;
 
+import com.submate.submate.common.ApiErrorCode;
+import com.submate.submate.common.ApiException;
 import com.submate.submate.dto.PaymentResponse;
 import com.submate.submate.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,7 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public List<PaymentResponse> getPayments(Long userId, String from, String to) {
         if (from == null || to == null) {
-            throw new IllegalArgumentException("from, to는 필수입니다. (yyyy-MM-dd)");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "from, to는 필수입니다. (yyyy-MM-dd)");
         }
 
         LocalDate fromDate;
@@ -34,14 +36,14 @@ public class PaymentService {
             fromDate = LocalDate.parse(from);
             toDate = LocalDate.parse(to);
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("날짜 형식은 yyyy-MM-dd 입니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "날짜 형식은 yyyy-MM-dd 입니다.");
         }
 
         if (fromDate.isAfter(toDate)) {
-            throw new IllegalArgumentException("from은 to보다 늦을 수 없습니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "from은 to보다 늦을 수 없습니다.");
         }
         if (toDate.isAfter(fromDate.plusYears(MAX_YEARS))) {
-            throw new IllegalArgumentException("조회 기간은 최대 " + MAX_YEARS + "년입니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "조회 기간은 최대 " + MAX_YEARS + "년입니다.");
         }
 
         return paymentRepository.findAllForPeriod(userId, fromDate, toDate)
