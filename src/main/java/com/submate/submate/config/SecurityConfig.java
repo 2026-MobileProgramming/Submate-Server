@@ -1,16 +1,18 @@
 package com.submate.submate.config;
 
+import com.submate.submate.common.ApiErrorCode;
+import com.submate.submate.dto.ErrorResponse;
 import com.submate.submate.repository.UserRepository;
 import com.submate.submate.service.JwtService;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
 public class SecurityConfig {
@@ -28,7 +30,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JsonMapper jsonMapper)
             throws Exception {
 
         http
@@ -57,7 +59,15 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(exception ->
                         exception.authenticationEntryPoint(
-                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                                (request, response, authenticationException) -> {
+                                    ApiErrorCode error = ApiErrorCode.UNAUTHORIZED;
+                                    response.setStatus(error.status().value());
+                                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                                    jsonMapper.writeValue(
+                                            response.getOutputStream(),
+                                            new ErrorResponse(error.name(), error.message())
+                                    );
+                                }
                         )
                 )
 

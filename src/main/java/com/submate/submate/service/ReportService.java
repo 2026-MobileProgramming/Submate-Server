@@ -1,5 +1,8 @@
 package com.submate.submate.service;
 
+import com.submate.submate.common.ApiErrorCode;
+import com.submate.submate.common.ApiException;
+
 import com.submate.submate.common.PaymentDateCalculator;
 import com.submate.submate.common.CategoryCode;
 import com.submate.submate.dto.ReportServiceResponse;
@@ -19,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.Year;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -85,8 +90,14 @@ public class ReportService {
             int year,
             int month
     ) {
-        YearMonth targetMonth = YearMonth.of(year, month);
-        YearMonth previousMonth = targetMonth.minusMonths(1);
+        YearMonth targetMonth;
+        YearMonth previousMonth;
+        try {
+            targetMonth = YearMonth.of(year, month);
+            previousMonth = targetMonth.minusMonths(1);
+        } catch (DateTimeException e) {
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "조회할 연도와 월의 범위를 확인해 주세요.");
+        }
 
         // 현재 사용자의 구독 및 결제 기록 조회
         List<Subscription> subscriptions =
@@ -142,6 +153,9 @@ public class ReportService {
     }
 
     public YearlyReportResponse getYearlyReport(Long userId, int year) {
+        if (year < Year.MIN_VALUE || year > Year.MAX_VALUE) {
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "조회할 연도의 범위를 확인해 주세요.");
+        }
 
         LocalDate today = LocalDate.now();
         YearMonth currentMonth = YearMonth.from(today);

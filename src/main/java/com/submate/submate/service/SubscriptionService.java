@@ -1,5 +1,7 @@
 package com.submate.submate.service;
 
+import com.submate.submate.common.ApiErrorCode;
+import com.submate.submate.common.ApiException;
 import com.submate.submate.common.CategoryCode;
 import com.submate.submate.common.PaymentDateCalculator;
 import com.submate.submate.dto.SubscriptionCreateRequest;
@@ -67,7 +69,7 @@ public class SubscriptionService {
         // 2. DB에서 해당 카테고리 조회
         Category category = categoryRepository.findById(categoryCode.getId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("존재하지 않는 카테고리입니다."));
+                        new ApiException(ApiErrorCode.INVALID_INPUT, "존재하지 않는 카테고리입니다."));
 
         // 3. 등록 날짜
         LocalDate today = LocalDate.now();
@@ -161,7 +163,7 @@ public class SubscriptionService {
         CategoryCode categoryCode = CategoryCode.fromName(request.getCategory());
 
         Category category = categoryRepository.findById(categoryCode.getId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 카테고리입니다."));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.INVALID_INPUT, "존재하지 않는 카테고리입니다."));
 
         // 3. 유료 / 무료 체험 구분
         boolean isTrial = isTrial(request.getCurrency(), request.getPlanType());
@@ -291,11 +293,11 @@ public class SubscriptionService {
 
     private String validateServiceName(String serviceName) {
         if (serviceName == null || serviceName.isBlank()) {
-            throw new IllegalArgumentException("서비스명은 필수입니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "서비스명은 필수입니다.");
         }
         String trimmed = serviceName.trim();
         if (trimmed.length() > 50) {
-            throw new IllegalArgumentException("서비스명은 50자 이하여야 합니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "서비스명은 50자 이하여야 합니다.");
         }
         return trimmed;
     }
@@ -305,35 +307,35 @@ public class SubscriptionService {
             return "ACTIVE";
         }
         if (!STATUSES.contains(status)) {
-            throw new IllegalArgumentException("구독 상태가 올바르지 않습니다: " + status);
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "구독 상태가 올바르지 않습니다.");
         }
         return status;
     }
 
     private String validateCurrency(String currency) {
-        if (!CURRENCIES.contains(currency)) {
-            throw new IllegalArgumentException("통화는 KRW, JPY, USD, FREE_TRIAL 중 하나여야 합니다.");
+        if (currency == null || !CURRENCIES.contains(currency)) {
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "통화는 KRW, JPY, USD, FREE_TRIAL 중 하나여야 합니다.");
         }
         return currency;
     }
 
     private BigDecimal validateAmount(BigDecimal amount, String currency) {
         if (amount == null || amount.signum() < 0 || amount.compareTo(MAX_AMOUNT) > 0) {
-            throw new IllegalArgumentException("결제 금액이 올바르지 않습니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "결제 금액이 올바르지 않습니다.");
         }
         int scale = Math.max(amount.stripTrailingZeros().scale(), 0);
         if (("KRW".equals(currency) || "JPY".equals(currency)) && scale > 0) {
-            throw new IllegalArgumentException("KRW, JPY는 정수 금액만 입력할 수 있습니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "KRW, JPY는 정수 금액만 입력할 수 있습니다.");
         }
         if (scale > 2) {
-            throw new IllegalArgumentException("USD는 소수점 둘째 자리까지 입력할 수 있습니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "USD는 소수점 둘째 자리까지 입력할 수 있습니다.");
         }
         return amount;
     }
 
     private String validateBillingCycle(String billingCycle) {
         if (!"MONTHLY".equals(billingCycle) && !"YEARLY".equals(billingCycle)) {
-            throw new IllegalArgumentException("결제 주기는 MONTHLY, YEARLY 중 하나여야 합니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "결제 주기는 MONTHLY, YEARLY 중 하나여야 합니다.");
         }
         return billingCycle;
     }
@@ -344,21 +346,21 @@ public class SubscriptionService {
 
     private int requireDay(Integer day) {
         if (day == null || day < 1 || day > 31) {
-            throw new IllegalArgumentException("일은 1~31 사이여야 합니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "일은 1~31 사이여야 합니다.");
         }
         return day;
     }
 
     private int requireMonth(Integer month) {
         if (month == null || month < 1 || month > 12) {
-            throw new IllegalArgumentException("월은 1~12 사이여야 합니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, "월은 1~12 사이여야 합니다.");
         }
         return month;
     }
 
     private void validateLength(String value, int max, String fieldName) {
         if (value != null && value.length() > max) {
-            throw new IllegalArgumentException(fieldName + "은(는) " + max + "자 이하여야 합니다.");
+            throw new ApiException(ApiErrorCode.INVALID_INPUT, fieldName + "은(는) " + max + "자 이하여야 합니다.");
         }
     }
 }
