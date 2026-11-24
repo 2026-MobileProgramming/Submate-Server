@@ -20,11 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class SubscriptionService {
 
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final List<String> STATUSES = List.of("ACTIVE", "CANCEL_SCHEDULED", "CANCELED");
     private static final List<String> CURRENCIES = List.of("KRW", "JPY", "USD");
     private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999.99");
@@ -32,15 +34,18 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final CategoryRepository categoryRepository;
     private final ServiceItemRepository serviceItemRepository;
+    private final PaymentRecordingService paymentRecordingService;
 
     public SubscriptionService(
             SubscriptionRepository subscriptionRepository,
             CategoryRepository categoryRepository,
-            ServiceItemRepository serviceItemRepository
+            ServiceItemRepository serviceItemRepository,
+            PaymentRecordingService paymentRecordingService
     ) {
         this.subscriptionRepository = subscriptionRepository;
         this.categoryRepository = categoryRepository;
         this.serviceItemRepository = serviceItemRepository;
+        this.paymentRecordingService = paymentRecordingService;
     }
 
     // 내 구독 목록 조회
@@ -72,7 +77,7 @@ public class SubscriptionService {
                         new ApiException(ApiErrorCode.INVALID_INPUT, "존재하지 않는 카테고리입니다."));
 
         // 3. 등록 날짜
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL);
 
         // 4. 유료 구독 / 무료 체험 구분
         boolean isTrial = isTrial(request.getCurrency(), request.getPlanType());
@@ -143,6 +148,7 @@ public class SubscriptionService {
         // 6. DB 저장
         Subscription savedSubscription =
                 subscriptionRepository.save(subscription);
+        paymentRecordingService.recordFirstPaymentIfDue(savedSubscription, today);
 
         // 7. 응답 DTO 반환
         return new SubscriptionResponse(savedSubscription);
@@ -168,7 +174,7 @@ public class SubscriptionService {
         // 3. 유료 / 무료 체험 구분
         boolean isTrial = isTrial(request.getCurrency(), request.getPlanType());
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL);
 
         String serviceName = validateServiceName(request.getServiceName());
         String status = validateStatus(request.getStatus());
