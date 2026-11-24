@@ -54,6 +54,20 @@ public class Payment {
     protected Payment() {
     }
 
+    public Payment(Subscription subscription, LocalDate paidDate, BigDecimal exchangeRate,
+                   LocalDate rateDate, BigDecimal amountKrw) {
+        this.subscription = subscription;
+        this.user = subscription.getUser();
+        this.serviceName = subscription.getServiceName();
+        this.paidDate = paidDate;
+        this.billingCycle = subscription.getBillingCycle();
+        this.currency = subscription.getCurrency();
+        this.amount = subscription.getAmount();
+        this.exchangeRate = exchangeRate;
+        this.rateDate = rateDate;
+        this.amountKrw = amountKrw;
+    }
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
